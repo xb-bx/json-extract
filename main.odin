@@ -73,7 +73,7 @@ Error :: union #shared_nil {
 skip :: proc(parser: ^json.Parser) -> json.Error {
 	using json
 	switch parser.curr_token.kind {
-	case .Invalid, .EOF, .Comma, .Colon, .Close_Brace, .Close_Bracket, .Open_Bracket:
+	case .Invalid, .EOF, .Comma, .Colon, .Close_Brace, .Close_Bracket:
 		panic("shouldnt")
 	case .Null, .False, .True, .Infinity, .Integer, .NaN, .Ident, .Float, .String:
 		advance_token(parser)
@@ -86,11 +86,19 @@ skip :: proc(parser: ^json.Parser) -> json.Error {
 			if parser.curr_token.kind == .Comma do json.advance_token(parser)
 		}
 		advance_token(parser)
+	case .Open_Bracket:
+		advance_token(parser) or_return
+		for parser.curr_token.kind != .Close_Bracket {
+            skip(parser) or_return
+			if parser.curr_token.kind == .Comma do json.advance_token(parser)
+        }
+		advance_token(parser)
+
 
 	}
 	return nil
 }
-extract :: proc(js: []byte, query: string, v: any) -> Error {
+extract :: proc(js: []byte, query: string, v: ^$T) -> Error {
 	parser := json.make_parser(js, json.Specification.JSON5)
 	query := query
 	pos := 0
